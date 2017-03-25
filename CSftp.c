@@ -9,6 +9,14 @@
 #include "usage.h"
 
 
+const int BUF_LEN = 64;
+
+const char *QUIT_COMMAND = "QUIT\n";
+
+char *CONNECTED_MESSAGE = "220 Service ready.\n";
+const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.";
+
+
 void process(int);
 
 
@@ -101,6 +109,25 @@ int main(int argc, char **argv) {
 
 void process(int fd) {
     // send a connected message
-    char *connectedMessage = "Connected.\n";
-    send(fd, connectedMessage, strlen(connectedMessage), 0);
+    send(fd, CONNECTED_MESSAGE, strlen(CONNECTED_MESSAGE), 0);
+
+    char buf[BUF_LEN];
+    char *command;
+
+    while (1) {
+        // receive a message
+        recv(fd, buf, BUF_LEN, 0);
+
+        // printf(buf);
+        command = strtok(buf, " ");
+        // printf(command);
+
+        if (strcmp(command, QUIT_COMMAND) == 0) {
+            // quit
+            break;
+        } else {
+            // unsupported command
+            send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
+        }
+    }
 }
