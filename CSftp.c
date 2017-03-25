@@ -11,10 +11,17 @@
 
 const int BUF_LEN = 64;
 
-const char *QUIT_COMMAND = "QUIT\n";
+const char *QUIT_COMMAND_LF = "QUIT\n";
+const char *QUIT_COMMAND_CRLF = "QUIT\r\n";
+const char *USER_COMMAND = "USER";
 
-char *CONNECTED_MESSAGE = "220 Service ready.\n";
-const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.";
+const char *CONNECTED_MESSAGE = "220 Service ready.\n";
+const char *LOGIN_MESSAGE = "230 User name ok.\n";
+const char *INVALID_USERNAME_MESSAGE = "530 Invalid user name.\n";
+const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
+
+const char *USER_CS317_LF = "cs317\n";
+const char *USER_CS317_CRLF = "cs317\r\n";
 
 
 void process(int);
@@ -116,15 +123,35 @@ void process(int fd) {
 
     while (1) {
         // receive a message
-        recv(fd, buf, BUF_LEN, 0);
+        memset(&buf, 0, sizeof(buf)/sizeof(char));
+        int bytesReceived = recv(fd, buf, BUF_LEN, 0);
+        printf("bytesReceived = %d\n", bytesReceived);
 
-        // printf(buf);
-        command = strtok(buf, " ");
-        // printf(command);
+        if (bytesReceived == -1) {
+            return;
+        }
 
-        if (strcmp(command, QUIT_COMMAND) == 0) {
+        if (bytesReceived == 0) {
             // quit
             break;
+        }
+
+        // printf("buf = %s, strlen(buf) = %d\n", buf, strlen(buf));
+        command = strtok(buf, " ");
+        // printf("command = %s, strlen(command) = %d\n", command, strlen(command));
+
+        if (strcmp(command, QUIT_COMMAND_LF) == 0 || strcmp(command, QUIT_COMMAND_CRLF) == 0) {
+            // quit
+            break;
+        } else if (strcmp(command, USER_COMMAND) == 0) {
+            char *username = strtok(NULL, " ");
+            // printf("username = %s, strlen(username) = %d\n", username, strlen(username));
+
+            if (strcmp(username, USER_CS317_LF) == 0 || strcmp(username, USER_CS317_CRLF) == 0) {
+                send(fd, LOGIN_MESSAGE, strlen(LOGIN_MESSAGE), 0);
+            } else {
+                send(fd, INVALID_USERNAME_MESSAGE, strlen(INVALID_USERNAME_MESSAGE), 0);
+            }
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
