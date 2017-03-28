@@ -14,6 +14,7 @@ const int BUF_LEN = 64;
 const char *QUIT_COMMAND = "QUIT";
 const char *USER_COMMAND = "USER";
 const char *CWD_COMMAND = "CWD";
+const char *CDUP_COMMAND = "CDUP";
 const char *CURRENT_DIRECTORY = "./";
 const char *PARENT_DIRECTORY = "../";
 
@@ -23,6 +24,7 @@ const char *INVALID_USERNAME_MESSAGE = "530 Invalid user name.\n";
 const char *CHANGE_DIRECTORY_MESSAGE = "200 Command OK.\n";
 const char *INVALID_PATH_MESSAGE = "550 Invalid path.\n";
 const char *CWD_FAIL_MESSAGE = "550 CWD failed.\n";
+const char *CDUP_FAIL_MESSAGE = "550 CDUP failed.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
 const char *USER_CS317 = "cs317";
@@ -126,6 +128,13 @@ void process(int fd) {
     char buf[BUF_LEN];
     char *command;
 
+    char projectDirectory[4096];
+    if (getcwd(projectDirectory, 4096) == NULL) {
+      // TODO: send error message
+    }
+    int projectDirectoryLen = strlen(projectDirectory);
+    printf("projectDirectory = %s, projectDirectoryLen = %d\n", projectDirectory, projectDirectoryLen);
+
     while (1) {
         // receive a message
         memset(&buf, 0, sizeof(buf)/sizeof(char));
@@ -180,6 +189,39 @@ void process(int fd) {
             }
 
             send(fd, CHANGE_DIRECTORY_MESSAGE, strlen(CHANGE_DIRECTORY_MESSAGE), 0);
+        } else if (strcmp(command, CDUP_COMMAND) == 0) {
+            char currentWorkingDirectory[4096];
+            char *newWorkingDirectory;
+
+            if (getcwd(currentWorkingDirectory, 4096) != NULL) {
+                printf("currentWorkingDirectory = %s\n", currentWorkingDirectory);
+
+                if (*(currentWorkingDirectory + projectDirectoryLen) == 0) {
+                    send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
+                    continue;
+                }
+
+                newWorkingDirectory = currentWorkingDirectory;
+
+                int i;
+                for (i = strlen(newWorkingDirectory); i != projectDirectoryLen; i--) {
+                    if (newWorkingDirectory[i] == 47) {
+                      break;
+                    }
+                }
+
+                *(newWorkingDirectory + i) = 0;
+                printf("newWorkingDirectory = %s\n", newWorkingDirectory);
+
+                if (chdir(newWorkingDirectory) != 0) {
+                    send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
+                    continue;
+                }
+
+                send(fd, CHANGE_DIRECTORY_MESSAGE, strlen(CHANGE_DIRECTORY_MESSAGE), 0);
+            } else {
+                send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
+            }
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
