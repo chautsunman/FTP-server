@@ -11,20 +11,25 @@
 
 const int BUF_LEN = 64;
 
-const char *QUIT_COMMAND_LF = "QUIT\n";
-const char *QUIT_COMMAND_CRLF = "QUIT\r\n";
+const char *QUIT_COMMAND = "QUIT";
 const char *USER_COMMAND = "USER";
+const char *CWD_COMMAND = "CWD";
+const char *CURRENT_DIRECTORY = "./";
+const char *PARENT_DIRECTORY = "../";
 
 const char *CONNECTED_MESSAGE = "220 Service ready.\n";
 const char *LOGIN_MESSAGE = "230 User name ok.\n";
 const char *INVALID_USERNAME_MESSAGE = "530 Invalid user name.\n";
+const char *CHANGE_DIRECTORY_MESSAGE = "200 Command OK.\n";
+const char *INVALID_PATH_MESSAGE = "550 Invalid path.\n";
+const char *CWD_FAIL_MESSAGE = "550 CWD failed.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
-const char *USER_CS317_LF = "cs317\n";
-const char *USER_CS317_CRLF = "cs317\r\n";
+const char *USER_CS317 = "cs317";
 
 
 void process(int);
+void getBufLine(char *);
 
 
 // Here is an example of how to use the above function. It also shows
@@ -125,7 +130,7 @@ void process(int fd) {
         // receive a message
         memset(&buf, 0, sizeof(buf)/sizeof(char));
         int bytesReceived = recv(fd, buf, BUF_LEN, 0);
-        printf("bytesReceived = %d\n", bytesReceived);
+        // printf("bytesReceived = %d\n", bytesReceived);
 
         if (bytesReceived == -1) {
             return;
@@ -136,25 +141,59 @@ void process(int fd) {
             break;
         }
 
+        getBufLine(&buf);
+        // printf("bufLine = %s, strlen(bufLine) = %d\n", buf, strlen(buf));
+
         // printf("buf = %s, strlen(buf) = %d\n", buf, strlen(buf));
         command = strtok(buf, " ");
         // printf("command = %s, strlen(command) = %d\n", command, strlen(command));
 
-        if (strcmp(command, QUIT_COMMAND_LF) == 0 || strcmp(command, QUIT_COMMAND_CRLF) == 0) {
+        if (strcmp(command, QUIT_COMMAND) == 0) {
             // quit
             break;
         } else if (strcmp(command, USER_COMMAND) == 0) {
             char *username = strtok(NULL, " ");
             // printf("username = %s, strlen(username) = %d\n", username, strlen(username));
 
-            if (strcmp(username, USER_CS317_LF) == 0 || strcmp(username, USER_CS317_CRLF) == 0) {
+            if (strcmp(username, USER_CS317) == 0) {
                 send(fd, LOGIN_MESSAGE, strlen(LOGIN_MESSAGE), 0);
             } else {
                 send(fd, INVALID_USERNAME_MESSAGE, strlen(INVALID_USERNAME_MESSAGE), 0);
             }
+        } else if (strcmp(command, CWD_COMMAND) == 0) {
+            char *path = strtok(NULL, " ");
+            // printf("path = %s, strlen(path) = %d\n", path, strlen(path));
+
+            if (strstr(path, CURRENT_DIRECTORY) == path) {
+                send(fd, INVALID_PATH_MESSAGE, strlen(INVALID_PATH_MESSAGE), 0);
+                continue;
+            }
+
+            if (strstr(path, PARENT_DIRECTORY) != NULL) {
+                send(fd, INVALID_PATH_MESSAGE, strlen(INVALID_PATH_MESSAGE), 0);
+                continue;
+            }
+
+            if (chdir(path) != 0) {
+                send(fd, CWD_FAIL_MESSAGE, strlen(CWD_FAIL_MESSAGE), 0);
+                continue;
+            }
+
+            send(fd, CHANGE_DIRECTORY_MESSAGE, strlen(CHANGE_DIRECTORY_MESSAGE), 0);
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
+        }
+    }
+}
+
+
+void getBufLine(char *buf) {
+    char *i;
+    for (i = buf; *i != 0; i++) {
+        if (*i == 10 || *i == 13) {
+            *i = 0;
+            break;
         }
     }
 }
