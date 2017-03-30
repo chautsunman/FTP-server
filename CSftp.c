@@ -16,12 +16,15 @@ const char *USER_COMMAND = "USER";
 const char *CWD_COMMAND = "CWD";
 const char *CDUP_COMMAND = "CDUP";
 const char *TYPE_COMMAND = "TYPE";
+const char *MODE_COMMAND = "MODE";
 
 const char *CURRENT_DIRECTORY = "./";
 const char *PARENT_DIRECTORY = "../";
 const char *TYPE_A = "A";
 const char *TYPE_I = "I";
 enum {ASCII_TYPE, IMAGE_TYPE};
+const char *MODE_S = "S";
+enum {STREAM_MODE};
 
 const char *CONNECTED_MESSAGE = "220 Service ready.\n";
 const char *LOGIN_MESSAGE = "230 User name ok.\n";
@@ -32,6 +35,8 @@ const char *CWD_FAIL_MESSAGE = "550 CWD failed.\n";
 const char *CDUP_FAIL_MESSAGE = "550 CDUP failed.\n";
 const char *SET_TYPE_MESSAGE = "200 Command OK.\n";
 const char *INVALID_TYPE_MESSAGE = "504 Command not implemented for that parameter.\n";
+const char *SET_MODE_MESSAGE = "200 Command OK.\n";
+const char *INVALID_MODE_MESSAGE = "504 Command not implemented for that parameter.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
 const char *USER_CS317 = "cs317";
@@ -145,6 +150,9 @@ void process(int fd) {
     int type = ASCII_TYPE;
     // printf("type = %d\n", type);
 
+    int mode = STREAM_MODE;
+    // printf("mode = %d\n", mode);
+
     while (1) {
         // receive a message
         memset(&buf, 0, sizeof(buf)/sizeof(char));
@@ -247,6 +255,18 @@ void process(int fd) {
             }
 
             // printf("type = %d\n", type);
+        } else if (strcmp(command, MODE_COMMAND) == 0) {
+            char *m = strtok(NULL, " ");
+            // printf("m = %s\n", m);
+
+            if (strcmp(m, MODE_S) == 0) {
+                mode = STREAM_MODE;
+                send(fd, SET_MODE_MESSAGE, strlen(SET_MODE_MESSAGE), 0);
+            } else {
+                send(fd, INVALID_MODE_MESSAGE, strlen(INVALID_MODE_MESSAGE), 0);
+            }
+
+            // printf("mode = %d\n", mode);
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
