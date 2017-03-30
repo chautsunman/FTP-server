@@ -15,8 +15,13 @@ const char *QUIT_COMMAND = "QUIT";
 const char *USER_COMMAND = "USER";
 const char *CWD_COMMAND = "CWD";
 const char *CDUP_COMMAND = "CDUP";
+const char *TYPE_COMMAND = "TYPE";
+
 const char *CURRENT_DIRECTORY = "./";
 const char *PARENT_DIRECTORY = "../";
+const char *TYPE_A = "A";
+const char *TYPE_I = "I";
+enum {ASCII_TYPE, IMAGE_TYPE};
 
 const char *CONNECTED_MESSAGE = "220 Service ready.\n";
 const char *LOGIN_MESSAGE = "230 User name ok.\n";
@@ -25,6 +30,8 @@ const char *CHANGE_DIRECTORY_MESSAGE = "200 Command OK.\n";
 const char *INVALID_PATH_MESSAGE = "550 Invalid path.\n";
 const char *CWD_FAIL_MESSAGE = "550 CWD failed.\n";
 const char *CDUP_FAIL_MESSAGE = "550 CDUP failed.\n";
+const char *SET_TYPE_MESSAGE = "200 Command OK.\n";
+const char *INVALID_TYPE_MESSAGE = "504 Command not implemented for that parameter.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
 const char *USER_CS317 = "cs317";
@@ -133,7 +140,10 @@ void process(int fd) {
       // TODO: send error message
     }
     int projectDirectoryLen = strlen(projectDirectory);
-    printf("projectDirectory = %s, projectDirectoryLen = %d\n", projectDirectory, projectDirectoryLen);
+    // printf("projectDirectory = %s, projectDirectoryLen = %d\n", projectDirectory, projectDirectoryLen);
+
+    int type = ASCII_TYPE;
+    // printf("type = %d\n", type);
 
     while (1) {
         // receive a message
@@ -194,7 +204,7 @@ void process(int fd) {
             char *newWorkingDirectory;
 
             if (getcwd(currentWorkingDirectory, 4096) != NULL) {
-                printf("currentWorkingDirectory = %s\n", currentWorkingDirectory);
+                // printf("currentWorkingDirectory = %s\n", currentWorkingDirectory);
 
                 if (*(currentWorkingDirectory + projectDirectoryLen) == 0) {
                     send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
@@ -211,7 +221,7 @@ void process(int fd) {
                 }
 
                 *(newWorkingDirectory + i) = 0;
-                printf("newWorkingDirectory = %s\n", newWorkingDirectory);
+                // printf("newWorkingDirectory = %s\n", newWorkingDirectory);
 
                 if (chdir(newWorkingDirectory) != 0) {
                     send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
@@ -222,6 +232,21 @@ void process(int fd) {
             } else {
                 send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
             }
+        } else if (strcmp(command, TYPE_COMMAND) == 0) {
+            char *t = strtok(NULL, " ");
+            // printf("t = %s\n", t);
+
+            if (strcmp(t, TYPE_A) == 0) {
+                type = ASCII_TYPE;
+                send(fd, SET_TYPE_MESSAGE, strlen(SET_TYPE_MESSAGE), 0);
+            } else if (strcmp(t, TYPE_I) == 0) {
+                type = IMAGE_TYPE;
+                send(fd, SET_TYPE_MESSAGE, strlen(SET_TYPE_MESSAGE), 0);
+            } else {
+                send(fd, INVALID_TYPE_MESSAGE, strlen(INVALID_TYPE_MESSAGE), 0);
+            }
+
+            // printf("type = %d\n", type);
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
