@@ -30,8 +30,9 @@ const char *STRU_F = "F";
 enum {FILE_STRU};
 
 const char *CONNECTED_MESSAGE = "220 Service ready.\n";
-const char *LOGIN_MESSAGE = "230 User name ok.\n";
+const char *LOGIN_MESSAGE = "230 User logged in, proceed.\n";
 const char *INVALID_USERNAME_MESSAGE = "530 Invalid user name.\n";
+const char *NOT_SIGN_IN_MESSAGE = "530 Not logged in.\n";
 const char *CHANGE_DIRECTORY_MESSAGE = "200 Command OK.\n";
 const char *INVALID_PATH_MESSAGE = "550 Invalid path.\n";
 const char *CWD_FAIL_MESSAGE = "550 CWD failed.\n";
@@ -145,6 +146,8 @@ void process(int fd) {
     char buf[BUF_LEN];
     char *command;
 
+    int signIn = 0;
+
     char projectDirectory[4096];
     if (getcwd(projectDirectory, 4096) == NULL) {
       // TODO: send error message
@@ -186,16 +189,30 @@ void process(int fd) {
         if (strcmp(command, QUIT_COMMAND) == 0) {
             // quit
             break;
-        } else if (strcmp(command, USER_COMMAND) == 0) {
+        }
+
+        if (strcmp(command, USER_COMMAND) == 0) {
             char *username = strtok(NULL, " ");
             // printf("username = %s, strlen(username) = %d\n", username, strlen(username));
 
             if (strcmp(username, USER_CS317) == 0) {
+                signIn = 1;
                 send(fd, LOGIN_MESSAGE, strlen(LOGIN_MESSAGE), 0);
             } else {
                 send(fd, INVALID_USERNAME_MESSAGE, strlen(INVALID_USERNAME_MESSAGE), 0);
             }
-        } else if (strcmp(command, CWD_COMMAND) == 0) {
+
+            continue;
+        }
+
+        if (!signIn) {
+            send(fd, NOT_SIGN_IN_MESSAGE, strlen(NOT_SIGN_IN_MESSAGE), 0);
+            continue;
+        }
+
+        // user signed in
+        
+        if (strcmp(command, CWD_COMMAND) == 0) {
             char *path = strtok(NULL, " ");
             // printf("path = %s, strlen(path) = %d\n", path, strlen(path));
 
