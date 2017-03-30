@@ -17,6 +17,7 @@ const char *CWD_COMMAND = "CWD";
 const char *CDUP_COMMAND = "CDUP";
 const char *TYPE_COMMAND = "TYPE";
 const char *MODE_COMMAND = "MODE";
+const char *STRU_COMMAND = "STRU";
 
 const char *CURRENT_DIRECTORY = "./";
 const char *PARENT_DIRECTORY = "../";
@@ -25,6 +26,8 @@ const char *TYPE_I = "I";
 enum {ASCII_TYPE, IMAGE_TYPE};
 const char *MODE_S = "S";
 enum {STREAM_MODE};
+const char *STRU_F = "F";
+enum {FILE_STRU};
 
 const char *CONNECTED_MESSAGE = "220 Service ready.\n";
 const char *LOGIN_MESSAGE = "230 User name ok.\n";
@@ -37,6 +40,8 @@ const char *SET_TYPE_MESSAGE = "200 Command OK.\n";
 const char *INVALID_TYPE_MESSAGE = "504 Command not implemented for that parameter.\n";
 const char *SET_MODE_MESSAGE = "200 Command OK.\n";
 const char *INVALID_MODE_MESSAGE = "504 Command not implemented for that parameter.\n";
+const char *SET_STRU_MESSAGE = "200 Command OK.\n";
+const char *INVALID_STRU_MESSAGE = "504 Command not implemented for that parameter.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
 const char *USER_CS317 = "cs317";
@@ -153,6 +158,9 @@ void process(int fd) {
     int mode = STREAM_MODE;
     // printf("mode = %d\n", mode);
 
+    int stru = FILE_STRU;
+    // printf("stru = %d\n", stru);
+
     while (1) {
         // receive a message
         memset(&buf, 0, sizeof(buf)/sizeof(char));
@@ -267,6 +275,18 @@ void process(int fd) {
             }
 
             // printf("mode = %d\n", mode);
+        } else if (strcmp(command, STRU_COMMAND) == 0) {
+            char *s = strtok(NULL, " ");
+            // printf("s = %s\n", s);
+
+            if (strcmp(s, STRU_F) == 0) {
+                stru = FILE_STRU;
+                send(fd, SET_STRU_MESSAGE, strlen(SET_STRU_MESSAGE), 0);
+            } else {
+                send(fd, INVALID_STRU_MESSAGE, strlen(INVALID_STRU_MESSAGE), 0);
+            }
+
+            // printf("stru = %d\n", stru);
         } else {
             // unsupported command
             send(fd, UNSUPPORTED_COMMAND_RESPONSE, strlen(UNSUPPORTED_COMMAND_RESPONSE), 0);
