@@ -21,9 +21,9 @@ const char *CDUP_COMMAND = "CDUP";
 const char *TYPE_COMMAND = "TYPE";
 const char *MODE_COMMAND = "MODE";
 const char *STRU_COMMAND = "STRU";
-const char *RETR_COMMAND = "RETR";
 const char *PASV_COMMAND = "PASV";
 const char *NLST_COMMAND = "NLST";
+const char *RETR_COMMAND = "RETR";
 
 // parameters
 const char *CURRENT_DIRECTORY = "./";
@@ -48,8 +48,10 @@ const char *SET_MODE_MESSAGE = "200 Command OK.\n";
 const char *SET_STRU_MESSAGE = "200 Command OK.\n";
 const char *PASV_MESSAGE = "227 Entering Passive Mode (%s,%d,%d).\n";
 const int PASV_MESSAGE_LEN = 64;
-const char *DATA_CONNECTION_OPEN_MESSAGE = "150 Here comes the directory listing.\n";
-const char *DATA_CONNECTION_CLOSE_MESSAGE = "226 Closing data connection.\n";
+const char *NLST_CONNECTION_OPEN_MESSAGE = "150 Here comes the directory listing.\n";
+const char *NLST_CONNECTION_CLOSE_MESSAGE = "226 Closing data connection.\n";
+const char *RETR_CONNECTION_OPEN_MESSAGE = "150 File status okay; about to open data connection.\n";
+const char *RETR_CONNECTION_CLOSE_MESSAGE = "250 Requested file action okay, completed.\n";
 const char *QUIT_MESSAGE = "226 Closing data connection.\n";
 
 enum {GET_ADDR_INFO_ERROR = -1000, CREATE_SOCKET_ERROR, BIND_SOCKET_ERROR};
@@ -65,8 +67,9 @@ const char *INVALID_MODE_MESSAGE = "504 Command not implemented for that paramet
 const char *INVALID_STRU_MESSAGE = "504 Command not implemented for that parameter.\n";
 const char *PASV_ERROR_MESSAGE = "500 Error.\n";
 const char *DATA_OPEN_CONNECTION_ERROR_MESSAGE = "425 Can't open data connection.\n";
-const char *DATA_UNAVAILABLE_ERROR_MESSAGE = "450 Requested file action not taken.\n";
 const char *DATA_LOCAL_ERROR_MESSAGE = "451 Requested action aborted: local error in processing.\n";
+const char *NLST_UNAVAILABLE_ERROR_MESSAGE = "450 Requested file action not taken.\n";
+const char *RETR_UNAVAILABLE_ERROR_MESSAGE = "550 Requested action not taken.\n";
 const char *DATA_ERROR_MESSAGE = "500 Error.\n";
 const char *UNSUPPORTED_COMMAND_RESPONSE = "500 Unsupported Command.\n";
 
@@ -391,12 +394,12 @@ void process(int fd) {
                 continue;
             }
         } else if (strcmp(command, NLST_COMMAND) == 0) {
-            send(fd, DATA_CONNECTION_OPEN_MESSAGE, strlen(DATA_CONNECTION_OPEN_MESSAGE), 0);
+            send(fd, NLST_CONNECTION_OPEN_MESSAGE, strlen(NLST_CONNECTION_OPEN_MESSAGE), 0);
 
             int entriesPrinted;
             if ((entriesPrinted = listFiles(clientDataFd, ".")) < 0) {
                 if (entriesPrinted == -1) {
-                    send(fd, DATA_UNAVAILABLE_ERROR_MESSAGE, strlen(DATA_UNAVAILABLE_ERROR_MESSAGE), 0);
+                    send(fd, NLST_UNAVAILABLE_ERROR_MESSAGE, strlen(NLST_UNAVAILABLE_ERROR_MESSAGE), 0);
                 } else if (entriesPrinted == -2) {
                     send(fd, DATA_LOCAL_ERROR_MESSAGE, strlen(DATA_LOCAL_ERROR_MESSAGE), 0);
                 } else {
@@ -404,11 +407,38 @@ void process(int fd) {
                 }
             }
 
-            send(fd, DATA_CONNECTION_CLOSE_MESSAGE, strlen(DATA_CONNECTION_CLOSE_MESSAGE), 0);
+            // close the client data socket
+            close(clientDataFd);
+            clientDataFd = -1;
+
+            send(fd, NLST_CONNECTION_CLOSE_MESSAGE, strlen(NLST_CONNECTION_CLOSE_MESSAGE), 0);
+
+            // close the data socket
+            close(dataFd);
+            dataFd = -1;
+        } else if (strcmp(command, RETR_COMMAND) == 0) {
+            send(fd, RETR_CONNECTION_OPEN_MESSAGE, strlen(RETR_CONNECTION_OPEN_MESSAGE), 0);
+
+            char *path = strtok(NULL, " ");
+            // printf("path = %s, strlen(path) = %d\n", path, strlen(path));
+
+            FILE *file = fopen(path, "r");
+            if (file == NULL) {
+                send(fd, RETR_UNAVAILABLE_ERROR_MESSAGE, strlen(RETR_UNAVAILABLE_ERROR_MESSAGE), 0);
+            } else {
+                int c;
+                while ((c = fgetc(file)) != EOF) {
+                    send(clientDataFd, &c, 1, 0);
+                }
+
+                fclose(file);
+            }
 
             // close the client data socket
             close(clientDataFd);
             clientDataFd = -1;
+
+            send(fd, RETR_CONNECTION_CLOSE_MESSAGE, strlen(RETR_CONNECTION_CLOSE_MESSAGE), 0);
 
             // close the data socket
             close(dataFd);
