@@ -151,6 +151,7 @@ int main(int argc, char **argv) {
             return 1;
         }
 
+        // process the client
         process(clientfd);
 
         // printf("Client process end.\n");
@@ -192,6 +193,7 @@ void process(int fd) {
     struct sockaddr_storage clientDataAddr;
     socklen_t clientDataAddrLen;
 
+    // get the project directory
     char projectDirectory[4096];
     if (getcwd(projectDirectory, 4096) == NULL) {
       // TODO: send error message
@@ -199,12 +201,15 @@ void process(int fd) {
     int projectDirectoryLen = strlen(projectDirectory);
     // printf("projectDirectory = %s, projectDirectoryLen = %d\n", projectDirectory, projectDirectoryLen);
 
+    // initialize the type
     int type = ASCII_TYPE;
     // printf("type = %d\n", type);
 
+    // initialize the mode
     int mode = STREAM_MODE;
     // printf("mode = %d\n", mode);
 
+    // initialize the structure
     int stru = FILE_STRU;
     // printf("stru = %d\n", stru);
 
@@ -223,12 +228,15 @@ void process(int fd) {
             break;
         }
 
+        // get the line
         getBufLine(&buf);
         // printf("bufLine = %s, strlen(bufLine) = %d\n", buf, strlen(buf));
 
         // printf("buf = %s, strlen(buf) = %d\n", buf, strlen(buf));
+        // get the command
         command = strtok(buf, " ");
         // printf("command = %s, strlen(command) = %d\n", command, strlen(command));
+        // convert the command to uppercase
         char *p;
         for (p = command; *p != 0; p++) {
             *p = toupper(*p);
@@ -274,16 +282,19 @@ void process(int fd) {
             char *path = strtok(NULL, " ");
             // printf("path = %s, strlen(path) = %d\n", path, strlen(path));
 
+            // path cannot start with "./"
             if (strstr(path, CURRENT_DIRECTORY) == path) {
                 send(fd, INVALID_PATH_MESSAGE, strlen(INVALID_PATH_MESSAGE), 0);
                 continue;
             }
 
+            // path cannot contain "../"
             if (strstr(path, PARENT_DIRECTORY) != NULL) {
                 send(fd, INVALID_PATH_MESSAGE, strlen(INVALID_PATH_MESSAGE), 0);
                 continue;
             }
 
+            // change the working directory
             if (chdir(path) != 0) {
                 send(fd, CWD_FAIL_MESSAGE, strlen(CWD_FAIL_MESSAGE), 0);
                 continue;
@@ -294,14 +305,17 @@ void process(int fd) {
             char currentWorkingDirectory[4096];
             char *newWorkingDirectory;
 
+            // get the current working directory
             if (getcwd(currentWorkingDirectory, 4096) != NULL) {
                 // printf("currentWorkingDirectory = %s\n", currentWorkingDirectory);
 
+                // cannot change the working directory to outside the project directory
                 if (*(currentWorkingDirectory + projectDirectoryLen) == 0) {
                     send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
                     continue;
                 }
 
+                // get the new working directory
                 newWorkingDirectory = currentWorkingDirectory;
 
                 int i;
@@ -314,6 +328,7 @@ void process(int fd) {
                 *(newWorkingDirectory + i) = 0;
                 // printf("newWorkingDirectory = %s\n", newWorkingDirectory);
 
+                // change the working directory
                 if (chdir(newWorkingDirectory) != 0) {
                     send(fd, CDUP_FAIL_MESSAGE, strlen(CDUP_FAIL_MESSAGE), 0);
                     continue;
@@ -327,6 +342,7 @@ void process(int fd) {
             char *t = strtok(NULL, " ");
             // printf("t = %s\n", t);
 
+            // change the type
             if (strcmp(t, TYPE_A) == 0) {
                 type = ASCII_TYPE;
                 send(fd, SET_TYPE_MESSAGE, strlen(SET_TYPE_MESSAGE), 0);
@@ -342,6 +358,7 @@ void process(int fd) {
             char *m = strtok(NULL, " ");
             // printf("m = %s\n", m);
 
+            // change the mode
             if (strcmp(m, MODE_S) == 0) {
                 mode = STREAM_MODE;
                 send(fd, SET_MODE_MESSAGE, strlen(SET_MODE_MESSAGE), 0);
@@ -354,6 +371,7 @@ void process(int fd) {
             char *s = strtok(NULL, " ");
             // printf("s = %s\n", s);
 
+            // change the structure
             if (strcmp(s, STRU_F) == 0) {
                 stru = FILE_STRU;
                 send(fd, SET_STRU_MESSAGE, strlen(SET_STRU_MESSAGE), 0);
@@ -365,11 +383,13 @@ void process(int fd) {
         } else if (strcmp(command, PASV_COMMAND) == 0) {
             char pasvFormatMessage[PASV_MESSAGE_LEN];
 
+            // get the passive message to send
             if (getPasvMessage(pasvFormatMessage) != 0) {
                 send(fd, PASV_ERROR_MESSAGE, strlen(PASV_ERROR_MESSAGE), 0);
                 continue;
             }
 
+            // send the passive message
             send(fd, pasvFormatMessage, strlen(pasvFormatMessage), 0);
 
             // setup the data connection
@@ -402,6 +422,7 @@ void process(int fd) {
         } else if (strcmp(command, NLST_COMMAND) == 0) {
             char *option = strtok(NULL, " ");
 
+            // reject NLST with no options
             if (option != NULL) {
                 send(fd, NLST_INVALID_OPTION_ERROR_MESSAGE, strlen(NLST_INVALID_OPTION_ERROR_MESSAGE), 0);
                 continue;
@@ -409,6 +430,7 @@ void process(int fd) {
 
             send(fd, NLST_CONNECTION_OPEN_MESSAGE, strlen(NLST_CONNECTION_OPEN_MESSAGE), 0);
 
+            // print the directory list
             int entriesPrinted;
             if ((entriesPrinted = listFiles(clientDataFd, ".")) < 0) {
                 if (entriesPrinted == -1) {
@@ -435,15 +457,18 @@ void process(int fd) {
             char *path = strtok(NULL, " ");
             // printf("path = %s, strlen(path) = %d\n", path, strlen(path));
 
+            // open the file
             FILE *file = fopen(path, "r");
             if (file == NULL) {
                 send(fd, RETR_UNAVAILABLE_ERROR_MESSAGE, strlen(RETR_UNAVAILABLE_ERROR_MESSAGE), 0);
             } else {
+                // send the file byte by byte
                 int c;
                 while ((c = fgetc(file)) != EOF) {
                     send(clientDataFd, &c, 1, 0);
                 }
 
+                // close the file
                 fclose(file);
             }
 
