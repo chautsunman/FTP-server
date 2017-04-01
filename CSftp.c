@@ -156,20 +156,20 @@ int main(int argc, char **argv) {
         // close the client socket
         close(clientfd);
 
-        // close the socket
-        close(sockfd);
-
         // printf("Sockets closed.\n");
 
-        return 0;
+        // return 0;
     }
+
+    // close the socket
+    close(sockfd);
 
 
     // This is how to call the function in dir.c to get a listing of a directory.
     // It requires a file descriptor, so in your code you would pass in the file descriptor
     // returned for the ftp server's data connection
 
-    printf("Printed %d directory entries\n", listFiles(1, "."));
+    // printf("Printed %d directory entries\n", listFiles(1, "."));
     return 0;
 
 }
