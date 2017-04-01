@@ -69,6 +69,7 @@ const char *INVALID_STRU_MESSAGE = "504 Command not implemented for that paramet
 const char *PASV_ERROR_MESSAGE = "500 Error.\n";
 const char *DATA_OPEN_CONNECTION_ERROR_MESSAGE = "425 Can't open data connection.\n";
 const char *DATA_LOCAL_ERROR_MESSAGE = "451 Requested action aborted: local error in processing.\n";
+const char *NLST_INVALID_OPTION_ERROR_MESSAGE = "501 Syntax error in parameters or arguments.\n";
 const char *NLST_UNAVAILABLE_ERROR_MESSAGE = "450 Requested file action not taken.\n";
 const char *RETR_UNAVAILABLE_ERROR_MESSAGE = "550 Requested action not taken.\n";
 const char *DATA_ERROR_MESSAGE = "500 Error.\n";
@@ -399,6 +400,13 @@ void process(int fd) {
                 continue;
             }
         } else if (strcmp(command, NLST_COMMAND) == 0) {
+            char *option = strtok(NULL, " ");
+
+            if (option != NULL) {
+                send(fd, NLST_INVALID_OPTION_ERROR_MESSAGE, strlen(NLST_INVALID_OPTION_ERROR_MESSAGE), 0);
+                continue;
+            }
+
             send(fd, NLST_CONNECTION_OPEN_MESSAGE, strlen(NLST_CONNECTION_OPEN_MESSAGE), 0);
 
             int entriesPrinted;
