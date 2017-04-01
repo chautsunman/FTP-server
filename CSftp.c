@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "dir.h"
@@ -227,6 +228,10 @@ void process(int fd) {
         // printf("buf = %s, strlen(buf) = %d\n", buf, strlen(buf));
         command = strtok(buf, " ");
         // printf("command = %s, strlen(command) = %d\n", command, strlen(command));
+        char *p;
+        for (p = command; *p != 0; p++) {
+            *p = toupper(*p);
+        }
 
         if (strcmp(command, QUIT_COMMAND) == 0) {
             send(fd, QUIT_MESSAGE, strlen(QUIT_MESSAGE), 0);
